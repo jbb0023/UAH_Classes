@@ -1,0 +1,148 @@
+/*--------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 5
+* Lab section: 3
+* Date: Feb 17, 2017
+* Instructor: Mounika Ponugoti
+* Program: lab5main.s43
+* Description: changes LED behavior depending 
+* on SW1 and SW2 described in the following table
+*
+*                        LED1 LED2
+*  Program Startup       Off  Off
+*  No Switch Pressed     Off  Off
+*  SW1 Pressed           5 Hz 5 Hz
+*  SW2 Pressed           On   On
+*--------------------------------------------------------*/
+
+#include  <msp430xG46x.h>
+        RSEG    CSTACK                  ; pre-declaration of segment
+        RSEG    CODE                    ; place program in 'CODE' segment      
+RESET:  mov.w   #SFE(CSTACK),SP         ; Initialize the stack pointer
+StopWDT:
+        mov.w   #WDTPW+WDTHOLD,&WDTCTL  ; kick dog
+Setup:
+        bis.b   #00000110b,&P2DIR            ; Set P2.2 and P2.1 to output
+                                        ; direction (0000_0110)
+        bic.b   #00000110b,&P2OUT       ; Set P2OUT to 0x0000_0000 
+                                        ;(LED2 is off, LED1 is off) 		
+        bis.w   #GIE,SR                 ; Enable global interrupts
+        bis.b   #00000011b,&P1IE        ; Enable Port 1 interrupts from SW1 and SW2
+        bis.b   #00000001b,&P1IES       ; negative edge from high to low
+        bic.b   #00000001b,&P1IFG       ; Clear interrupt flag
+
+InfLoop:
+        jmp     $                       ; Loop here until interrupt
+
+;----------------------------------------------------------------------------
+; SW interrupt service routine (ISR)
+;----------------------------------------------------------------------------
+
+SW_ISR:
+        bic.b   #001h,&P1IFG            ; Clear interrupt flag
+ChkSw: 
+        bic.b   #00000110b,&P2OUT       ; turn off LEDs
+        bit.b   #00000001b,&P1IN  	; Check if SW1 is pressed
+        JZ      Debounce1               ; If zero jump to debounce
+        bit.b   #00000010b,&P1IN	; Check if SW2 is pressed
+        JZ      Debounce2 	        ; If zero jump to debounce
+        JMP     SWoff                   ; jump to end
+        
+Debounce1:     
+        mov.w	#2000,R15	        ;Calculate delay Set to (2000 * 10 * 1탎 delay)  
+
+L1:	dec.w	R15	                ; Decrement R15
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	JNZ	L1       	        ; Delay over? 
+        bit.b   #00000001b,&P1IN        ; test SW1
+        JNZ      ChkSw                    ; if off jump back to chksw
+SetLED1: 
+        bis.b   #00000010b,&P2OUT       ; turn on LED1
+SWflash: 
+        xor.b   #00000110b,&P2OUT        ; flip LEDs
+        mov.w	#20000,R15               ; Calculate delay Set to (2000 * 10 * 1탎 delay) 5 Hz
+
+Delay:	dec.w	R15	                ; Decrement R15
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	JNZ	Delay       	        ; Delay over?        
+        bit.b   #00000001b,&P1IN        ; test SW1
+        JZ      SWflash                 ; if on jump back to SWflash
+
+BonusBounce:        
+        mov.w	#2000,R15	        ;Calculate delay Set to (2000 * 10 * 1탎 delay)  
+
+Bloop:	dec.w	R15	                ; Decrement R15
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	JNZ	Bloop       	        ; Delay over?        
+        bit.b   #00000011b,&P1IN        ; test SW1 &2
+        JNZ      ChkSw                  ; if off jump back to chksw 
+        
+BSetLED1:
+        bis.b   #00000110b,&P2OUT       ; turn on LED1
+Btoggle:
+        xor.b   #00000100b,&P2OUT        ; flip LED 2
+        mov.w	#20000,R15               ; Calculate delay Set to (2000 * 10 * 1탎 delay) 5 Hz
+
+BDelay:	dec.w	R15	                ; Decrement R15
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	JNZ	BDelay       	        ; Delay over?        
+        bit.b   #00000011b,&P1IN        ; test SW1
+        JZ      Btoggle                 ; if off jump back to chksw          
+        JNZ     SWoff
+        
+Debounce2:     
+        mov.w	#200,R15	        ;Calculate delay Set to (2000 * 10 * 1탎 delay)  
+        
+L2:	dec.w	R15	                ; Decrement R15
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
+	JNZ	L2       	        ; Delay over?   
+        bit.b   #00000011b,&P1IN             ; bonus, if both on
+        JZ      BonusBounce             ; jump to bonus bounce
+        bit.b   #00000010b,&P1IN        ; test SW1       
+        JNZ      ChkSw                  ; jump to main loop if off
+        bis.b   #00000110b,&P2OUT       ; turn on both LEDs
+SW2wait:
+        bit.b   #00000010b,&P1IN        ; test SW1
+        JZ     SW2wait                 ; wait until SW1 is released
+SWoff:
+        bic.b   #00000110,&P2OUT        ; turn off LEDs
+        reti                            ; return from interrupt 
+;----------------------------------------------------------------------------
+        COMMON  INTVEC                  ; Interrupt Vectors
+;----------------------------------------------------------------------------
+        ORG     RESET_VECTOR            ; MSP430 RESET Vector
+        DW      RESET                   ;
+        ORG     PORT1_VECTOR            ; Port1 interrupt vector
+        DW      SW_ISR                 ; go to SW1_ISR
+ 
+        END

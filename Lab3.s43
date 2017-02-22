@@ -1,0 +1,112 @@
+/*---------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 3
+* Lab Section: 
+* Date: Feb 3, 2017
+* Instructor: Mounika Ponugoti
+* Program: examines input string, counts total characters
+* including spaces, number of letters, and number of integers
+* (0-9). Set port P1 to display number of letters and port P2
+* to display the number of integers. Stores total number of 
+* characters in register R8.
+* ---------------------------------------------------------*/
+
+#include "msp430.h"                        ; #define controlled include file
+       
+        ORG 0FF00h                         ; start register location in empty registers!
+        
+myStr   DB "Welcome to CPE323, home of the MSP430!" ; string is placed on the stack
+
+        NAME    main                       ; module name
+        
+        PUBLIC  main                       ; makes main publically visible
+          
+        ORG     0FFFEh                     ; stores starting address of program
+                                           ; keeps starting address of reset handler
+                                           ; (interrupt service routine)
+        DC16 init                          ; allocates 16 bits or 2 bytes
+        
+        RSEG    CSTACK                     ; pre-declaration of segment
+        RSEG    CODE                       ; place program in 'CODE' segment
+                                           ; used to mark the beginning of 
+                                           ; relocatable code (CODE and DATA are 
+                                           ; recognized segment types                             
+init:   
+
+        MOV     #SFE(CSTACK), SP           ; set up stack (initialize stack pointer 
+                                           ; register)
+          
+main:   
+
+        NOP                                ; main program
+        MOV.W   #WDTPW+WDTHOLD,&WDTCTL     ; Stop watchdog timer (disables it) "kick the dog" lol
+        BIS.B   #0FFh,&P1DIR               ; configure P1.x output
+        BIS.B   #0FFh,&P2DIR               ; configure P2.x output
+        MOV.W   #myStr, R4                 ; load the starting address of the string 
+                                           ; into R4
+                                            
+        CLR.B   R8                         ; R8 holds total number of characters
+        CLR.B   R9                         ; R9 holds number of letters
+        CLR.B   R10                        ; R10 holds number of integers
+                               
+gnext:  
+
+        MOV.B   @R4+, R6                   ; get a new character
+        CMP     #0,R6		           ; is it a null character
+        JEQ     lend                       ; if yes, go to the end
+        
+        INC R8                             ; increments total number of characters      
+        
+        CLR.B   R11                        ; R11 serves as uppercase ASCII counter
+        CLR.B   R12                        ; R12 serves as lowercase ASCII counter
+        CLR.B   R13                        ; R13 serves as integer ASCII counter
+          
+        MOV.B   #'A', R11                  ; initializes R11 to first uppercase
+        MOV.B   #'a', R12                  ; initializes R12 to first lowercase
+        MOV.B   #'0', R13                  ; initializes R13 to first integer
+          
+compup: 
+
+        CMP #'[', R11                      ; if out of uppercase jump to lowercase loop
+        JEQ complow                        ; jump to lowercase loop
+        CMP R11, R6                        ; upcase loop - compare first letter 
+        JEQ incrementchar                  ; if equal, increment uppercase counter and jump back to main
+        INC R11                            ; if not equal increment uppercase count
+        JMP compup                         ; continue loop
+            
+complow:
+
+        CMP #'{', R12                      ; if out of uppercase jump to lowercase loop
+        JEQ compint                        ; jump to lowercase loop
+        CMP R12, R6                        ; upcase loop - compare first letter 
+        JEQ incrementchar                  ; if equal, increment uppercase counter and jump back to main
+        INC R12                            ;
+        JMP complow                        ; continue loop
+          
+incrementchar:
+
+        INC R9                             ; increment letter counter
+        JMP gnext                          ; jump to main loop
+          
+compint:
+
+        CMP #':', R13                      ; if end of integers reached
+        JEQ gnext                          ; jump to main loop
+        CMP R13, R6                        ; upcase loop - compare first letter 
+        JEQ incrementint                   ; if equal, jump to incrementint
+        INC R13                            ; increment integer counter
+        JMP compint                        ; continue loop
+
+incrementint:
+
+        INC R10                            ; increment int counter
+        JMP gnext                          ; jump to main loop   
+
+lend:   
+        
+        MOV.B   R9,&P1OUT                  ; Set all P1 pins
+        MOV.B   R10,&P2OUT                 ; Set all P2 pins
+        BIS.W   #LPM4,SR                   ; LPM4
+        NOP                                ; Required only for debugger
+        END                                ; end program
+        

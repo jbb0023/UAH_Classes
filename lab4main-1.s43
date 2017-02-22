@@ -1,0 +1,79 @@
+/*--------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 4
+* Lab section: 3
+* Date: Feb 10, 2017
+* Instructor: Mounika Ponugoti
+* Program: lab4main.s43
+* Description: initializes two 16-bit signed integers
+* "Items" and "Cost", passes data to two subroutines
+* using registers for first SR and stack for 2nd SR
+* FOR BONUS: initializes two signed integer arrays
+* A and B containing 8 elements each and calls both bonus
+* subroutines
+* With Items = 3, Cost = 2
+* arr1 = 1, -1, 1, -1, 1, 1, 1, 1
+* arr2 = 1, 1, 1, -1, 1, -1, 1, 1
+* SW_Cost takes 44 cycles 
+* HW_Cost takes 26 cycles
+* SW_DOTPRODUCT takes 786766 cycles
+* HW_DOTPRODUCT takes 145 cycles
+*--------------------------------------------------------*/
+
+#include "msp430.h"                             ; #define include file
+
+        ORG          0FF00h                     ; start register location in empty registers!
+
+        NAME         main                       ; module name
+         
+        PUBLIC       main                       ; makes main public (visible)
+
+        ORG     0FFFEh                          ; stores starting address of program
+
+        EXTERN       SW_COST                    ; includes subroutines
+        EXTERN       HW_COST
+        EXTERN       SW_DOTPRODUCT
+        EXTERN       HW_DOTPRODUCT
+        
+        RSEG         CSTACK                     ; relocatable segment for stack
+        RSEG         CODE                       ; relocatable segment for code
+        
+main:   MOV          #SFE(CSTACK), SP           ; sets up stack pointer
+        MOV.W        #WDTPW+WDTHOLD,&WDTCTL     ; kick the dog
+        
+        ; SW_COST
+        MOV          Items, R4                  ; put Items address into R4
+        MOV          Cost,  R5                  ; put Cost address into R5        
+        CALL         #SW_COST                   ; push PC onto stack, goto first SR
+                                                ; 62 - 18 = 44 Cycles for SW_COST
+        ; HW_COST
+        MOV          Items, R4                  ; reinitialize Items and Cost
+        MOV          Cost,  R5                  ;           
+        PUSH.W         R4                       ; pushes R4 to stack
+        PUSH.W         R5                       ; pushes R5 to stack
+        CALL         #HW_COST                   ; calls second subroutine
+                                                ; 100 - 74 = 26 Cycles for HW_COST
+
+        ; SW_DOTPRODUCT
+        MOV          #arr1, R7                   ; store array arr1 in R7
+        MOV          #arr2, R8                   ; store array arr2 in R8
+        CALL         #SW_DOTPRODUCT              ; stores dotproduct in R9
+
+        ; HW_DOTPRODUCT
+        MOV          #arr1, R7                   ; Reinitialize arrays to registers
+        MOV          #arr2, R8                   ;         
+        CALL         #HW_DOTPRODUCT              ; call DOTPRODUCT
+
+        JMP          $                          ; end program
+        NOP                                     ; no operation (so no interference)
+
+; 16-bit signed integers
+Items:   DC16         -3                         ; arbitrary number of items
+Cost:    DC16         -4                         ; arbitrary cost
+
+; bonus arrays
+arr1    DC16         1, -1, 1, -1, 1, 1, 1, 1    ; signed integer array 1
+arr2    DC16         1, 1, 1, -1, 1, -1, 1, 1    ; signed integer array 2                                    
+
+
+        END

@@ -1,0 +1,43 @@
+/*--------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 4
+* Lab section: 3
+* Date: Feb 10, 2017
+* Instructor: Mounika Ponugoti
+* Program: HW_DOTPRODUCT.s43
+* Description: calculates the dot product of the two
+* arrays using the hardware multiplier as in the HW_COST
+* subroutine. Stores answer to R15
+*--------------------------------------------------------*/
+
+; HW_DOTPRODUCT Takes 145 cycles
+
+#include "msp430.h"                             ; #define controlled include file
+
+      PUBLIC    HW_DOTPRODUCT                   ; available/visible
+      
+      RSEG      CODE                            ; use relocatable segment code
+      
+HW_DOTPRODUCT:
+          
+        CLR     R15                             ; result register
+        CLR     R10                             ; counter
+        MOV     #9, R10
+        DINT                                    ; Disable interrupts
+        NOP                                     ; Required for DINT
+        
+HWmult:
+        DEC     R10                             ; decrement, jump to end if zero
+        JZ      lend
+
+        MOV     @R7+, &MPYS                      ; load first operand
+        MOV     @R8+, &OP2                       ; load second operand
+        
+        ADD     RESLO, R15                      ; add result to R15
+        JMP     HWmult                          ; repeat
+
+lend:       
+        EINT                                    ; reenable interrupts
+        
+        RET                                     ; return to stack pointer
+        END        

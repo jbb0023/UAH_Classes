@@ -1,0 +1,87 @@
+/*--------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 4
+* Lab section: 3
+* Date: Feb 10, 2017
+* Instructor: Mounika Ponugoti
+* Program: SW_DOTPRODUCT.s43
+* Description: calculates the dot product of the two signed
+* integer arrays using the same multiplication technique as
+* the SW_COST subroutine
+*--------------------------------------------------------*/
+
+; SW_DOTPRODUCT Takes 786766 CYCLES
+
+#include "msp430.h"                             ; #define controlled include file
+
+      PUBLIC    SW_DOTPRODUCT                   ; available/visible
+      
+      RSEG      CODE                            ; use relocatable segment code
+      
+SW_DOTPRODUCT:
+        
+        CLR     R9                              ; dot product to be stored in R9
+        MOV     #9, R10                         ; store length of arrays in R10
+
+lnext:                                          ; loop to parse arrays
+        CLR     R11                             ; clear counter
+        DEC     R10                             ; decrement counter
+        JZ      llend                           ; exit subroutine
+
+        CLR     R4                              ; clear R4/5 for array items
+        CLR     R5
+        ADD     @R7+, R4                        ; add item from arr1 to R4
+        ADD     @R8+, R5                        ; add item from arr2 to R5
+ 
+        CLR     R6                              ; use R6 to show if one number was negative
+      
+        CMP     R4, 0                           ; if either number is zero R12 stays zero
+        JZ      lend                            ; return to main
+        CMP     R5, 0
+        JZ      lend        
+
+        CMP     R4, 0                           ; if register is negative
+        JL      ifR4Neg                         ; jump to negative condition loop
+        CMP     R5, 0
+        JL      ifR5Neg
+      
+SWmult:                                         ; multiplication loop named SWmult        
+        ADD     R4, R11                         ; add multiplicand once to target register
+        DEC     R5                              ; decrement multiplier
+        JZ      lend                            ; jump to end if R5 is zero
+        JMP     SWmult                          ; otherwise continue loop
+
+ifR4Neg:  
+        CMP     R5, 0                           ; if other number is also negative
+        JL      SWmult                          ; jump to positive multiplication loop
+        INV     R4                              ; get 2's complement (change sign)
+        INC     R4                              ; treats as positive number now
+        CLRN                                    ; clear Negative flag
+        INC     R6                              ; set R6 to show R10 should be negative
+        JMP     SWmult
+
+ifR5Neg:
+        CMP     R4, 0                           ; if other number is also negative
+        JL      SWmult                          ; jump to positive multiplication loop
+        INV     R5                              ; get 2's complement (change sign)
+        INC     R5                              ; treats as positive number now
+        CLRN                                    ; clear Negative flag
+        INC     R6                              ; set R6 to show R12 should be negative
+        JMP     SWmult
+
+INVR11                                 
+        INV     R11                             ; inverts sign of R11 if negative
+        INC     R11                             ; 2's comp
+        SETN                                    ; sets negative flag for R11
+        CLR     R6                              ; clears sign check
+        JMP     lend                            ; jumps to end
+        
+lend:   
+        CMP     R6, 0
+        JZ      INVR11
+        ADD     R11, R9                         ; add multiplied value to dotproduct
+        JMP     lnext                           ; jump back to array parse loop
+       
+llend:
+        RET                                     ; return to main
+        END

@@ -1,0 +1,71 @@
+/*--------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 4
+* Lab section: 3
+* Date: Feb 10, 2017
+* Instructor: Mounika Ponugoti
+* Program: SW_COST.s43
+* Description: determines the cost of a customer's order
+* by multiplying the number of items by the cost per item
+* The parameters (Items and Cost) are passed to the 
+* subroutine using registers and the result stored in R12
+*--------------------------------------------------------*/
+
+; SW_COST TAKES 44 CYCLES
+
+#include "msp430.h"                             ; #define controlled include file
+
+      PUBLIC    SW_COST                         ; available/visible
+      
+      RSEG      CODE                            ; use relocatable segment code
+      
+SW_COST:                                        ; name of subroutine
+        CLR     R6                              ; use R6 to show if one number was negative
+        CLR     R12                             ; initialize R12 to zero
+        CMP     R4, 0                           ; if either number is zero R12 stays zero
+        JZ      lend                            ; return to main
+        CMP     R5, 0
+        JZ      lend        
+
+        CMP     R4, 0                           ; if register is negative
+        JL      ifR4Neg                         ; jump to negative condition loop
+        CMP     R5, 0
+        JL      ifR5Neg
+
+SWmult:                                         ; multiplication loop named SWmult        
+        ADD     R4, R12                         ; add multiplicand once to target register
+        DEC     R5                              ; decrement multiplier
+        JZ      lend                            ; jump to negative check if R5 is zero
+        JMP     SWmult                          ; otherwise continue loop
+
+ifR4Neg:  
+        CMP     R5, 0                           ; if other number is also negative
+        JL      SWmult                          ; jump to positive multiplication loop
+        INV     R4                              ; get 2's complement (change sign)
+        INC     R4                              ; treats as positive number now
+        CLRN                                    ; clear Negative flag
+        INC     R6                              ; set R6 to show R12 should be negative
+        JMP     SWmult
+
+ifR5Neg:
+        CMP     R4, 0                           ; if other number is also negative
+        JL      SWmult                          ; jump to positive multiplication loop
+        INV     R5                              ; get 2's complement (change sign)
+        INC     R5                              ; treats as positive number now
+        CLRN                                    ; clear Negative flag
+        INC     R6                              ; set R6 to show R12 should be negative
+        JMP     SWmult
+
+INVR12                                 
+        INV     R12                             ; inverts sign of R12 if negative
+        INC     R12                             ; 2's comp
+        SETN                                    ; sets negative flag for R12
+        CLR     R6                              ; clears sign check
+        JMP     lend                            ; jumps to end
+        
+lend:   
+        CMP     R6, 0
+        JZ     INVR12
+        RET                                     ; return to original PC 
+        END
+        

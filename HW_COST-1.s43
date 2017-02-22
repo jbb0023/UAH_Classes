@@ -1,0 +1,39 @@
+/*--------------------------------------------------------
+* Name: John Bennett
+* Lab assignment: 4
+* Lab section: 3
+* Date: Feb 10, 2017
+* Instructor: Mounika Ponugoti
+* Program: HW_COST.s43
+* Description: determines cost of a customer's order using
+* the hardware multiplier. The parameters (Items and Cost)
+* are passed to the subroutine using the stack
+* and the result should be stored in R14
+*--------------------------------------------------------*/
+
+; HW_COST TAKES 26 CYCLES
+
+#include "msp430.h"                             ; #define controlled include file
+
+      PUBLIC    HW_COST                         ; available/visible
+      
+      RSEG      CODE                            ; use relocatable segment code
+      
+HW_COST:
+        CLR     R14                             ; result register
+        DINT                                    ; Disable interrupts
+        NOP                                     ; Required for DINT
+        
+        ; SP 0 is return address from subroutine
+        MOV     2(SP), R5                       ; retrieve R5 from SP (last in)
+        MOV     4(SP), R4                       ; retrieve R4 from SP (first in)
+        
+        MOV     R4, &MPYS                       ; load first operand
+        MOV     R5, &OP2                        ; load second operand
+      
+        MOV     RESLO, R14                     ; load result into R14
+        
+        EINT                                    ; reenable interrupts
+        
+        RET                                     ; return to stack pointer
+        END
